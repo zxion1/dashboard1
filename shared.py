@@ -83,29 +83,41 @@ COMMANDS = {
     "profile": {"module": "war", "description": "View your War stats & inventory"},
 }
 
+# --- HIGH SPEED CACHING SYSTEM ---
+_cached_db = {}
+_last_fetch = 0
 
 def load_db():
-    data = {}
-    if _mongo_col is not None:
+    global _cached_db, _last_fetch
+    now = time.time()
+    
+    # Only fetch from the cloud if 5 seconds have passed
+    if _mongo_col is not None and (now - _last_fetch > 5):
         try:
             doc = _mongo_col.find_one({"_id": "main"})
             if doc:
                 doc.pop("_id", None)
-                data = doc
+                _cached_db = doc
+                _last_fetch = now
         except Exception:
-            data = {}
-    elif os.path.exists(DB_FILE):
+            pass
+    elif not _cached_db and os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
+                _cached_db = json.load(f)
         except (json.JSONDecodeError, OSError):
-            data = {}
+            pass
+
     for key in ("users", "guilds", "warnings"):
-        data.setdefault(key, {})
-    return data
+        _cached_db.setdefault(key, {})
+    return _cached_db
 
 
 def save_db(data):
+    global _cached_db, _last_fetch
+    _cached_db = copy.deepcopy(data)
+    _last_fetch = time.time()  # Reset the timer so we don't immediately overwrite our own save
+    
     if _mongo_col is not None:
         try:
             payload = copy.deepcopy(data)
@@ -113,11 +125,12 @@ def save_db(data):
             return
         except Exception as e:
             print(f"⚠️ MongoDB save error: {e}")
+            
     tmp = f"{DB_FILE}.{os.getpid()}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
     os.replace(tmp, DB_FILE)
-
+# ---------------------------------
 
 def default_guild():
     return {
