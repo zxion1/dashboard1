@@ -11,7 +11,7 @@ from collections import defaultdict
 
 import aiohttp
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.responses import RedirectResponse, HTMLResponse
 import uvicorn
 
@@ -755,7 +755,7 @@ async def manage_page(request: Request, guild_id: int, page: str):
 
 
 @web_app.post("/manage/{guild_id}/{page}")
-async def manage_save(request: Request, guild_id: int, page: str):
+async def manage_save(request: Request, guild_id: int, page: str, background_tasks: BackgroundTasks):
     if not authed(request):
         return RedirectResponse("/login", status_code=303)
     handler = SAVE.get(page)
@@ -766,7 +766,10 @@ async def manage_save(request: Request, guild_id: int, page: str):
     db = load_db()
     g = get_guild(db, guild_id)
     msg = await handler(guild, g, db, form)
-    save_db(db)
+    
+    # 🚀 THE FIX: Save to MongoDB in the background so the page reloads instantly!
+    background_tasks.add_task(save_db, db)
+    
     return RedirectResponse(f"/manage/{guild_id}/{page}?msg={quote(msg)}", status_code=303)
 
 
