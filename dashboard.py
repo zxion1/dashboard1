@@ -17,7 +17,7 @@ import uvicorn
 
 from shared import (
     MODULES, COMMANDS,
-    load_db, save_db, get_guild, format_welcome_text, now_ts
+    load_db, save_db, get_guild, now_ts
 )
 
 load_dotenv()
@@ -33,6 +33,16 @@ web_app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 sessions = set()
 _cache = {}
 _http_session: aiohttp.ClientSession = None
+
+
+def format_welcome_text(template: str, member_mention: str, username: str, server_name: str, count: int) -> str:
+    return (
+        (template or "")
+        .replace("{user}", member_mention)
+        .replace("{username}", username)
+        .replace("{server}", server_name)
+        .replace("{count}", str(count))
+    )
 
 
 # ==========================================
@@ -205,7 +215,6 @@ body {
 }
 a { color: inherit; text-decoration: none; }
 
-/* SIDEBAR */
 .side {
   width: 268px;
   background: rgba(12,13,18,0.88);
@@ -316,7 +325,6 @@ a { color: inherit; text-decoration: none; }
 }
 .side-foot a:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
 
-/* MAIN AREA */
 .main {
   flex: 1;
   padding: 32px 44px 60px;
@@ -360,7 +368,6 @@ a { color: inherit; text-decoration: none; }
 h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
 .sub { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
 
-/* CARDS & GRIDS */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -403,7 +410,6 @@ h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
 .card-title { font-size: 15.5px; font-weight: 700; display: flex; align-items: center; gap: 9px; }
 .card-title i { width: 18px; height: 18px; color: #818cf8; }
 
-/* FORMS & INPUTS */
 label.f {
   display: block;
   color: #cbd5e1;
@@ -430,7 +436,6 @@ select:focus, input:focus, textarea:focus {
 }
 textarea { min-height: 92px; resize: vertical; line-height: 1.5; }
 
-/* MODERN iOS SWITCHES */
 .switch-row {
   display: flex;
   align-items: center;
@@ -469,7 +474,6 @@ textarea { min-height: 92px; resize: vertical; line-height: 1.5; }
 }
 .switch input:checked + .slider:before { transform: translateX(18px); }
 
-/* CHIP CHECKBOXES FOR ROLES */
 .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .chip-item input { display: none; }
 .chip-box {
@@ -494,7 +498,6 @@ textarea { min-height: 92px; resize: vertical; line-height: 1.5; }
   box-shadow: 0 0 12px var(--accent-glow);
 }
 
-/* BUTTONS */
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
 button, .btn {
   background: linear-gradient(135deg, var(--accent), #4f46e5);
@@ -523,7 +526,6 @@ button.sec, .btn.sec {
 }
 button.sec:hover, .btn.sec:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); }
 button.ok { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 14px rgba(16,185,129,0.25); }
-button.warn-btn { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 14px rgba(245,158,11,0.25); }
 button.danger {
   background: rgba(239,68,68,0.12);
   color: #fca5a5;
@@ -534,7 +536,6 @@ button.danger {
 }
 button.danger:hover { background: var(--err); color: #fff; }
 
-/* DISCORD LIVE PREVIEW */
 .dc-preview {
   background: #313338;
   border-radius: 10px;
@@ -561,7 +562,6 @@ button.danger:hover { background: var(--err); color: #fff; }
 .dc-embed-desc { color: #dbdee1; font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
 .dc-embed-foot { color: #949ba4; font-size: 11px; margin-top: 10px; font-weight: 600; }
 
-/* TABLES & PILLS */
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13.5px; }
 th { color: var(--subtle); font-size: 11px; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 700; }
@@ -581,7 +581,6 @@ th { color: var(--subtle); font-size: 11px; text-transform: uppercase; letter-sp
 }
 .var-pill:hover { background: var(--accent); color: #fff; }
 
-/* TOAST NOTIFICATION */
 #toast-box {
   position: fixed;
   bottom: 24px;
@@ -609,7 +608,6 @@ th { color: var(--subtle); font-size: 11px; text-transform: uppercase; letter-sp
 .toast.err { border-color: rgba(239,68,68,0.5); color: #fef2f2; }
 @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-/* SERVER SELECTOR CARDS */
 .servers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; margin-top: 24px; }
 .srv-card {
   background: var(--card);
@@ -1090,7 +1088,7 @@ def page_commands(guild, g, db):
 
     toolbar = (
         "<div class='card' style='display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap'>"
-        "<input type='text' style='max-width:380px;margin:0' placeholder='🔍 Search 35+ slash commands...' "
+        "<input type='text' style='max-width:380px;margin:0' placeholder='🔍 Search slash commands...' "
         "oninput=\"document.querySelectorAll('.cmd-item').forEach(r=>r.style.display=r.innerText.toLowerCase().includes(this.value.toLowerCase())?'':'none')\">"
         "<div class='btn-row' style='margin:0'>"
         "<button type='button' class='sec' onclick='toggleAllCmds(true)'>Enable All</button>"
